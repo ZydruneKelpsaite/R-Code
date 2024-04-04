@@ -1,0 +1,246 @@
+Logistic Regression: Framingham Dataset Heart Disease
+
+Framingham Dataset 
+
+	> library(readxl)
+Upload dataset into Rstudio	
+	
+	> heart <- read_excel("heart.xlsx")
+	> View(heart)
+	
+Take look at first rows	> head(heart)
+	# A tibble: 6 × 16
+	male age education currentSmoker cigsPerDay BPMeds prevalentStroke prevalentHyp
+	<dbl> <dbl> <chr> <dbl> <chr> <chr> <dbl> <dbl>
+	1 1 39 4 0 0 0 0 0
+	2 0 46 2 0 0 0 0 0
+	3 1 48 1 1 20 0 0 0
+	4 0 61 3 1 30 0 0 1
+	5 0 46 x 1 23 0 0 0
+	6 0 43 2 0 0 0 0 1
+	# ℹ 8 more variables: diabetes <dbl>, totChol <chr>, sysBP <dbl>, diaBP <dbl>, BMI <chr>,
+	# heartRate <chr>, glucose <chr>, TenYearCHD <dbl>
+	
+Inspect structure	
+> str(heart)
+	tibble [4,238 × 16] (S3: tbl_df/tbl/data.frame)
+	$ male : num [1:4238] 1 0 1 0 0 0 0 0 1 1 ...
+	$ age : num [1:4238] 39 46 48 61 46 43 63 45 52 43 ...
+	$ education : chr [1:4238] "4" "2" "1" "3" ...
+	$ currentSmoker : num [1:4238] 0 0 1 1 1 0 0 1 0 1 ...
+	$ cigsPerDay : chr [1:4238] "0" "0" "20" "30" ...
+	$ BPMeds : chr [1:4238] "0" "0" "0" "0" ...
+	$ prevalentStroke: num [1:4238] 0 0 0 0 0 0 0 0 0 0 ...
+	$ prevalentHyp : num [1:4238] 0 0 0 1 0 1 0 0 1 1 ...
+	$ diabetes : num [1:4238] 0 0 0 0 0 0 0 0 0 0 ...
+	$ totChol : chr [1:4238] "195" "250" "245" "225" ...
+	$ sysBP : num [1:4238] 106 121 128 150 130 ...
+	$ diaBP : num [1:4238] 70 81 80 95 84 110 71 71 89 107 ...
+	$ BMI : chr [1:4238] "26.97" "28.73" "25.34" "28.58" ...
+	$ heartRate : chr [1:4238] "80" "95" "75" "65" ...
+	$ glucose : chr [1:4238] "77" "76" "70" "103" ...
+	$ TenYearCHD : num [1:4238] 0 0 0 1 0 0 1 0 0 0 ...
+	
+Inspect data dimensions	
+> dim(heart)
+	[1] 4238 16
+	
+Transform data	
+library(dplyr)
+	
+	columns_to_change <- c("male", "currentSmoker", "BPMeds", "prevalentStroke", "prevalentHyp", "diabetes", "TenYearCHD")
+	
+	heart <- heart %>%
+	mutate_at(vars(columns_to_change), ~ ifelse(. == 0, "False", "True"))
+	
+	columns_to_convert <- c("male", "currentSmoker", "BPMeds", "prevalentStroke", "prevalentHyp", "diabetes", "TenYearCHD")
+	
+	heart <- heart %>%
+	mutate_at(vars(columns_to_convert), as.logical)
+	
+Summary
+	> summary(heart)
+	male age education currentSmoker cigsPerDay BPMeds
+	Mode :logical Min. :32.00 Min. :1.000 Mode :logical Length:4238 Mode :logical
+	FALSE:2419 1st Qu.:42.00 1st Qu.:1.000 FALSE:2144 Class :character FALSE:4061
+	TRUE :1819 Median :49.00 Median :2.000 TRUE :2094 Mode :character TRUE :124
+	Mean :49.58 Mean :1.979 NA's :53
+	3rd Qu.:56.00 3rd Qu.:3.000
+	Max. :70.00 Max. :4.000
+	NA's :106
+	prevalentStroke prevalentHyp diabetes totChol sysBP diaBP
+	Mode :logical Mode :logical Mode :logical Min. :107.0 Min. : 83.5 Min. : 48.00
+	FALSE:4213 FALSE:2922 FALSE:4129 1st Qu.:206.0 1st Qu.:117.0 1st Qu.: 75.00
+	TRUE :25 TRUE :1316 TRUE :109 Median :234.0 Median :128.0 Median : 82.00
+	Mean :236.7 Mean :132.4 Mean : 82.89
+	3rd Qu.:263.0 3rd Qu.:144.0 3rd Qu.: 89.88
+	Max. :696.0 Max. :295.0 Max. :142.50
+	NA's :50
+	BMI heartRate glucose TenYearCHD
+	Min. :15.54 Min. : 44.00 Min. : 40.00 Mode :logical
+	1st Qu.:23.07 1st Qu.: 68.00 1st Qu.: 71.00 FALSE:3594
+	Median :25.40 Median : 75.00 Median : 78.00 TRUE :644
+	Mean :25.80 Mean : 75.88 Mean : 81.97
+	3rd Qu.:28.04 3rd Qu.: 83.00 3rd Qu.: 87.00
+	Max. :56.80 Max. :143.00 Max. :394.00
+	NA's :19 NA's :1 NA's :388
+	
+	
+Generate all uni-variable plots	
+library(ggplot2)
+	library(gridExtra)
+	dataset <- data.frame(heart)
+	
+	all_plots <- lapply(X = 1:ncol(dataset), function(x) ggplot()+
+	geom_bar(data = dataset,
+	aes(x = dataset[,x]), fill = "skyblue" ,
+	alpha = 0.6)+
+	theme_linedraw()+
+	xlab(colnames(dataset)[x])
+	)
+	
+	#colnames(dataset)
+	marrangeGrob(grobs=all_plots, nrow=2, ncol=2)
+	
+Generate all bi-variable plots	
+ptlist_bi <- list()
+	
+	for (var in colnames(dataset)) {
+	if (var == "education" || class(dataset[, var]) %in% c("factor", "logical")) {
+	# Treat education as a factor
+	dataset[[var]] <- factor(dataset[[var]])
+	
+	ptlist_bi[[var]] <- ggplot(data = dataset) +
+	geom_bar(aes_string(x = var, fill = "TenYearCHD"), position = "fill") +
+	theme_minimal() +
+	xlab(var)
+	} else if (class(dataset[, var]) %in% c("numeric", "double", "integer")) {
+	ptlist_bi[[var]] <- ggplot(data = dataset) +
+	geom_boxplot(aes_string(y = var, x = "TenYearCHD")) +
+	theme_minimal() +
+	theme(panel.grid.major = element_line(color = "gray", size = 0.2),
+	panel.grid.minor = element_line(color = "gray", size = 0.2)) +
+	xlab("TenYearCHD") +
+	ylab(var)
+	}
+	}
+	
+	# Use plot_grid from cowplot
+	marrangeGrob(grobs = ptlist_bi, nrow = 2, ncol = 2)
+	
+	
+Looking for Association between qualitative variable pairs using Goodman&Kruskal tau	
+
+class_list <- lapply(X = 1:ncol(dataset), function(x) class(dataset[,x]))
+	names(class_list) <- colnames(dataset)
+	
+	dataset_categorical <- subset(x = dataset, select = names(which(class_list=="logical"| class_list=="factor")))
+	
+	#colnames(dataset_cat_variables)
+	dataset_categorical$education <- NULL
+	
+	
+	GKmatrix_dataset <- GKtauDataframe(dataset_categorical)
+	plot(GKmatrix_dataset)
+	
+	
+1st Model including all original variables:	
+#code: creating a dataset_1 with no NA
+specifically cigsPerday and currentSmoker variables	dataset_1 <- dataset[complete.cases(dataset),]
+	model1 <- glm(data = dataset_1, formula = TenYearCHD ~ . , family = "binomial")
+	summary(model1)
+	
+	
+2nd model including all original variables except currentSmoker.	
+# Assign dataset_2 to be a copy of dataset_1
+cigsPerday is converted into a factor variable	dataset_2 <- dataset_1
+	dataset_2$currentSmoker <- NULL
+	# Define custom breaks and labels
+	custom_breaks <- c(0, 20, 30, 40, Inf)
+	custom_labels <- c("cigsPerDay[1,20)", "cigsPerDay[20,30)", "cigsPerDay[30,40)", "cigsPerDay[40+)")
+	
+	# Convert cigsPerDay to custom intervals
+	dataset_2$cigsPerDay <- cut(dataset_2$cigsPerDay, breaks = custom_breaks, labels = custom_labels, include.lowest = TRUE)
+	
+	# Ensure cigsPerDay is treated as a factor
+	dataset_2$cigsPerDay <- as.factor(dataset_2$cigsPerDay)
+	
+	model2 <- glm(data = dataset_2, formula = TenYearCHD ~ . , family = "binomial")
+	summary(model2)
+	
+Cross-Validation Evaluation
+	install.packages("boot")
+	library(boot)
+	set.seed(7)
+	model1_cv_delta <- cv.glm(data = dataset_1, glmfit = model1, cost = cost, K = 5)$delta[1]
+	model2_cv_delta <- cv.glm(data = dataset_2, glmfit = model2, cost = cost, K = 5)$delta[1]
+	
+	kable(data.frame("model1" = model1_cv_delta ,
+	model2 = model2_cv_delta ),
+	caption = "Misclassification error", digits = 4)
+
+PREDICTIONS	
+#import original dataset from excel – graded_heart		
+			
+	#replace NA with mean values		
+			
+	graded_heart_imputed <- na.aggregate(graded_heart, FUN = mean)		
+			
+	# Check the resulting dataset		
+			
+	head(graded_heart_imputed)		
+			
+	# create a copy g_heart for modelling		
+			
+	g_heart <- graded_heart_imputed		
+			
+	# Look at structure		
+			
+	str(g_heart)		
+			
+	# Load the library caTools		
+			
+	library(caTools)		
+			
+	# Randomly split the data into training and testing sets		
+			
+	set.seed(1000)		
+			
+	split <- sample.split(g_heart$TenYearCHD, SplitRatio = 0.65)		
+			
+	# Split up the data using subset		
+			
+	train <- subset(g_heart, split==TRUE)		
+			
+	test <- subset(g_heart, split==FALSE)		
+			
+	# Logistic Regression Model		
+			
+	g_heartLog <- glm(TenYearCHD ~ ., data = train, family=binomial)		
+			
+	summary(g_heartLog)		
+			
+	# Predictions on the test set		
+			
+	predictTest <- predict(g_heartLog, type="response", newdata=test)		
+			
+	# Confusion matrix with threshold of 0.5		
+			
+	table(test$TenYearCHD, predictTest > 0.5)		
+			
+			
+	Sensitivity: 19 / (19 + 206) = 0.084		
+	Specificity: 1247 / (1247 + 11) = 0.991		
+	Precision: 19 / (19 + 11) = 0.633		
+	Accuracy: (19 + 1247) / (19 + 1247 + 11 + 206) = 0.857		
+			
+			
+			
+	# Test set AUC		
+			
+	library(ROCR)		
+			
+	ROCRpred <- prediction(predictTest, test$TenYearCHD)		
+			
+	as.numeric(performance(ROCRpred, "auc")@y.values)		
+			
